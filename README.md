@@ -1,1 +1,1 @@
-# Code-cu-i-k-oop
+# Code-cuoi-ki-oop
