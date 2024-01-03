@@ -10,14 +10,19 @@ using UnityEngine.SceneManagement;
 using Unity.Services.Authentication;
 using UnityEngine.EventSystems;
 using System;
+using Unity.VisualScripting.Antlr3.Runtime.Tree;
 
 
 public class FormController : MonoBehaviour
 {
-    public GameObject loginform, signupform, profileform, forgetPassform, notification, MainMenu;
-    [SerializeField] public TMP_InputField loginUser, loginPassword, signupEmail, signupUser, signupPassword, signupConfirm,Age_txt,Name_txt;
+    public GameObject loginform, signupform, profileform, forgetPassform, notification, MainMenu,changepassform,changemailform;
+    [SerializeField] 
+    public TMP_InputField loginUser, loginPassword, signupEmail, signupUser, signupPassword, signupConfirm;
+    public TMP_InputField Age_txt, Name_txt,NewPassword, PsCheckEmail,CheckEmail ,ConfirmPass, ConfirmEmail, NewEmail;
+    public TMP_InputField RcvEmail,RcvUser,RcvID ;
     public Button submitLogin, submitSignup;
-    public TMP_Text noti_message, email_used, user_used,Email_txt,Username_txt,ID_text,changes;  
+    public TMP_Text noti_message, email_used, user_used,Email_txt,Username_txt,ID_text;
+    public TMP_Text[] messages;
     //tao list chua thong tin de khi chay truong se doc ko can dung append
     List<PlayerData> playerlist = new List<PlayerData>();
     
@@ -28,7 +33,7 @@ public class FormController : MonoBehaviour
         profileform.SetActive(false);
         forgetPassform.SetActive(false);
         MainMenu.SetActive(false);
-
+        notification.SetActive(false);
     }
     public void Runsignup()
     {
@@ -36,16 +41,15 @@ public class FormController : MonoBehaviour
         signupform.SetActive(true);
         profileform.SetActive(false);
         forgetPassform.SetActive(false);
-
     }
     public void Runprofile()
     {
         loginform.SetActive(false);
         signupform.SetActive(false);
         profileform.SetActive(true);
-        forgetPassform.SetActive(false);
-        
-
+        forgetPassform.SetActive(false);  
+        changemailform.SetActive(false);
+        changepassform.SetActive(false);
     }
     public void RunForgetPass()
     {
@@ -86,15 +90,99 @@ public class FormController : MonoBehaviour
         }
 
     }
-    public void UpdateInfo()
+    public void UpdateInfo(Button button)
     {
         PlayerData playerdata = playerlist.Find(player => player.Username == Username_txt.text);
-        playerdata.Name = Name_txt.text;
-        playerdata.Age = int.Parse(Age_txt.text);
-        changes.text="Changes save";
+        
+        if (button == buttons[3])
+        {
+            playerdata.Name = Name_txt.text;
+            playerdata.Age = int.Parse(Age_txt.text);           
+            StartCoroutine(ShowMessage("Changes saved",0,2));
+        }
+        if (button == buttons[4])
+        {
+            if (string.IsNullOrEmpty(NewPassword.text)|| string.IsNullOrEmpty(ConfirmPass.text)||string.IsNullOrEmpty(PsCheckEmail.text))
+            {
+                showNotification("Fields not empty", false);
+                return;
+            }
+            if (PsCheckEmail.text != playerdata.Email)
+            {
+                messages[1].text="Email not correct";
+                messages[2].text = "";
+                NewPassword.text = "";
+                ConfirmPass.text = "";
+                return;
+            }
+            else
+            {
+                messages[1].text = "";
+                if (NewPassword.text == ConfirmPass.text) playerdata.Password = NewPassword.text;
+                else {
+                    messages[2].text = "Password confirmation does not match";
+                    ConfirmPass.text = "";
+                    return;
+                }
+            }
+            showNotification("Password change successfully", false);
+            
+            Runprofile();
+        }
+        if (button == buttons[5])
+        {
+            if (string.IsNullOrEmpty(NewEmail.text) || string.IsNullOrEmpty(ConfirmEmail.text) || string.IsNullOrEmpty(CheckEmail.text))
+            {
+                showNotification("Fields not empty", false);
+                return;
+            }
+            if (CheckEmail.text != playerdata.Email)
+            {
+                messages[3].text = "Email not correct";
+                messages[4].text = "";
+                NewEmail.text = "";
+                ConfirmEmail.text = "";
+                return;
+            }
+            else
+            {
+                messages[3].text = "";
+                if (NewEmail.text == ConfirmEmail.text) playerdata.Email = NewEmail.text;
+                else
+                {
+                    messages[4].text = "Email confirmation does not match";
+                    ConfirmEmail.text = "";
+                    return;
+                }
+            }
+            showNotification("Email change successfully", false);
+            Runprofile();
+        }
+        if (button == buttons[6])
+        {
+            if (string.IsNullOrEmpty(RcvEmail.text) || string.IsNullOrEmpty(RcvUser.text) || string.IsNullOrEmpty(RcvID.text))
+            {
+                showNotification("Fields not empty", false);
+                return;
+            }
+            playerdata = playerlist.Find(player => player.Email == RcvEmail.text  && player.Username == RcvUser.text  &&  player.ID== RcvID.text);
+            if (playerdata!=null)
+            {
+                string colortext = string.Format("<color=#ff0000>{0}</color>", playerdata.Password);
+                showNotification("Your password is \n\"{0}\"" +colortext, false);
+                RcvUser.text = "";
+                RcvEmail.text = "";
+                RcvID.text = "";
+            }
+            else
+            {
+                showNotification("Information incorrect", false);
+                return;
+            }                    
+        }
+           
         Function.Saveinfo<PlayerData>(playerlist);
-        StartCoroutine(ShowMessage("Changes saved",2));
-       
+            
     }
     public void SignUpUser()
     {
@@ -146,11 +234,11 @@ public class FormController : MonoBehaviour
     {
         if (yesno)
         {
-            SelectButton(buttons[2],true);
+            NotiBtnSelect(buttons[2],true);
             
         }
         else {
-            SelectButton(buttons[2], false);
+            NotiBtnSelect(buttons[2], false);
             
         }
         
@@ -158,11 +246,11 @@ public class FormController : MonoBehaviour
         noti_message.text = " " + message;
         
     }
-    IEnumerator ShowMessage(string message,float delay)
+    IEnumerator ShowMessage(string message,int i,float delay)
     {
-        changes.text=message;
+        messages[i].text=message;
         yield return new WaitForSeconds(delay);
-        changes.text = "";
+        messages[i].text = "";
     }
     public void Noti_button()
     {
@@ -170,38 +258,36 @@ public class FormController : MonoBehaviour
     }
     public Button[] buttons;
 
-    public void SelectButton(Button selectedButton,bool yesno)
+    public void NotiBtnSelect(Button button,bool yesno)
     {
-        if (yesno) {
-            foreach (Button button in buttons)
+        for (int i = 0; i <= 2; i++)
+        {
+            if (yesno)
             {
-                if (button == selectedButton)
+                if (button == buttons[i])
                 {
-                    button.interactable = false;
-                    button.gameObject.SetActive(false);
+                    buttons[i].interactable = false;
+                    buttons[i].gameObject.SetActive(false);
                 }
                 else
                 {
-                    button.interactable = true;
-                    button.gameObject.SetActive(true);
+                    buttons[i].interactable = true;
+                    buttons[i].gameObject.SetActive(true);
                 }
 
             }
-        }
-        else {
-            foreach (Button button in buttons)
-            {
-                if (button == selectedButton)
-                {
-                    button.interactable = true;
-                    button.gameObject.SetActive(true);
-                }
-                else
-                {
-                    button.interactable = false;
-                    button.gameObject.SetActive(false);
-                }
-
+            else
+            {              
+                    if (button == buttons[i])
+                    {
+                        buttons[i].interactable = true;
+                        buttons[i].gameObject.SetActive(true);
+                    }
+                    else
+                    {
+                        buttons[i].interactable = false;
+                        buttons[i].gameObject.SetActive(false);
+                    }               
             }
         }
 
